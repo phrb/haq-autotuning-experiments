@@ -24,6 +24,7 @@ class QuantizeEnv:
         # default setting
         self.quantizable_layer_types = [nn.Conv2d, nn.Linear]
 
+        self.args = args
         # save options
         self.model = model
         self.model_for_measure = deepcopy(model)
@@ -124,7 +125,7 @@ class QuantizeEnv:
 
         # all the actions are made
         if self._is_final_layer():
-            if (args.optimizer == "DDPG"):
+            if (self.args.optimizer == "DDPG"):
                 self._final_action_wall()
 
             print('=> Final action list: {}'.format(self.strategy))
