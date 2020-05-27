@@ -8,7 +8,7 @@ quiet <- function(x) {
   invisible(force(x))
 }
 
-iterations <- 2
+iterations <- 1
 results <- NULL
 
 
@@ -36,7 +36,7 @@ for(i in 1:iterations){
                  warmup,
                  " --train_episode ",
                  total_measurements,
-                 " --use_top5",
+                 " --use_top1",
                  " --run_id ",
                  run_id,
                  " --data_bsize ",

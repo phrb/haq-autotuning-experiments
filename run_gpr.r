@@ -16,7 +16,7 @@ quiet <- function(x) {
   invisible(force(x))
 }
 
-iterations <- 2
+iterations <- 1
 
 results <- NULL
 
@@ -52,8 +52,8 @@ cuda_device <- as.integer(args[1])
 resume_run_id <- as.integer(args[2])
 
 size_weight <- 10.0
-top1_weight <- 0.0
-top5_weight <- 2.5
+top1_weight <- 5.0
+top5_weight <- 6.0
 
 network_sizes <- read.csv(network_sizes_data)
 network_specs <- network_sizes %>%
@@ -143,7 +143,8 @@ for(i in 1:iterations){
                      preserve_ratio,
                      " --n_worker 120 --warmup -1 --train_episode ",
                      sobol_n,
-                     " --use_top5",
+                     " --finetune_flag",
+                     " --use_top1",
                      " --run_id ",
                      run_id,
                      " --data_bsize ",
@@ -388,7 +389,8 @@ for(i in 1:iterations){
                      preserve_ratio,
                      " --n_worker 120 --warmup -1 --train_episode ",
                      gpr_added_points + gpr_added_neighbours,
-                     " --use_top5",
+                     " --finetune_flag",
+                     " --use_top1",
                      " --run_id ",
                      run_id,
                      " --data_bsize ",
