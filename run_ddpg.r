@@ -36,6 +36,7 @@ for(i in 1:iterations){
                  warmup,
                  " --train_episode ",
                  total_measurements,
+                 " --finetune_flag",
                  " --use_top1",
                  " --run_id ",
                  run_id,
