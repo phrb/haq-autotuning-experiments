@@ -52,8 +52,8 @@ cuda_device <- as.integer(args[1])
 resume_run_id <- as.integer(args[2])
 
 size_weight <- 10.0
-top1_weight <- 5.0
-top5_weight <- 6.0
+top1_weight <- 6.0
+top5_weight <- 0.0
 
 network_sizes <- read.csv(network_sizes_data)
 network_specs <- network_sizes %>%
