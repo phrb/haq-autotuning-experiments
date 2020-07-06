@@ -125,8 +125,8 @@ class QuantizeEnv:
 
         # all the actions are made
         if self._is_final_layer():
-            if (self.args.optimizer == "DDPG"):
-                self._final_action_wall()
+            # if (self.args.optimizer == "DDPG"):
+            #     self._final_action_wall()
 
             print('=> Final action list: {}'.format(self.strategy))
 
