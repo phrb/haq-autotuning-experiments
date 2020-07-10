@@ -146,8 +146,9 @@ class QuantizeEnv:
                 top_accs = self._validate(self.val_loader, self.model)
                 acc = top_accs["top1"]
 
-            # reward = self.reward(acc, w_size_ratio)
-            reward = self.reward(acc)
+            # Adding weights as part of reward
+            reward = self.reward(acc, w_size_ratio)
+            # reward = self.reward(acc)
 
             info_set = {'w_ratio': w_size_ratio,
                         'accuracy': acc,
