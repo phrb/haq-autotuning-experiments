@@ -52,8 +52,10 @@ cuda_device <- as.integer(args[1])
 resume_run_id <- as.integer(args[2])
 
 size_weight <- 10.0
-top1_weight <- 6.0
-top5_weight <- 0.0
+top1_weight <- 1.0
+top5_weight <- 1.0
+
+min_ratio <- 0.06
 
 network_sizes <- read.csv(network_sizes_data)
 network_specs <- network_sizes %>%
@@ -69,6 +71,17 @@ new_sample <- NULL
 perturbation <- NULL
 gpr_sample <- NULL
 search_space <- NULL
+
+# size_ratio: \in [0.0, 1.0], typical \in [0.1, 0.2]
+# top1: \in [0.0, 100.0], typical \in [50, 95]
+# top5: \in [0.0, 100.0], typical \in [65, 95]
+
+performance <- function(size_ratio, top1, top5){
+    return(((size_weight * abs(size_ratio - min_ratio)) +
+            (top1_weight * ((100.0 - top1) / 100.0)) +
+            (top5_weight * ((100.0 - top5) / 100.0))) /
+           (size_weight + top1_weight + top5_weight))
+}
 
 for(i in 1:iterations){
     if(!(is.null(gpr_sample))){
@@ -240,11 +253,12 @@ for(i in 1:iterations){
             gpr_model <- NULL
         }
 
-        #y <- ((size_weight * (coded_size_df$total_size_MB / coded_size_df$network_size_MB)) +
-        y <- ((size_weight * (search_space$SizeRatio)) +
-              (top1_weight * ((100.0 - search_space$Top1) / 100.0)) +
-              (top5_weight * ((100.0 - search_space$Top5) / 100.0))) /
-            (size_weight + top1_weight + top5_weight)
+        # y <- ((size_weight * (coded_size_df$total_size_MB / coded_size_df$network_size_MB)) +
+        # y <- ((size_weight * (search_space$SizeRatio)) +
+        #       (top1_weight * ((100.0 - search_space$Top1) / 100.0)) +
+        #       (top5_weight * ((100.0 - search_space$Top5) / 100.0))) /
+        #     (size_weight + top1_weight + top5_weight)
+        y <- performance(search_space$SizeRatio, search_space$Top1, search_space$Top5)
 
         gpr_model <- km(formula = ~ .,
                         design = select(search_space, -Top5, -Top1, -Size, -SizeRatio),
@@ -468,10 +482,9 @@ for(i in 1:iterations){
     #               network_size_MB = sum(network_specs$bits8_size_MB))
 
     response_data <- search_space %>%
-        mutate(performance_metric = ((size_weight * (search_space$SizeRatio)) +
-                                     (top1_weight * ((100.0 - search_space$Top1) / 100.0)) +
-                                     (top5_weight * ((100.0 - search_space$Top5) / 100.0))) /
-                   (size_weight + top1_weight + top5_weight))
+        mutate(performance_metric = performance(search_space$SizeRatio,
+                                                search_space$Top1,
+                                                search_space$Top5))
 
     best_points <- search_space[response_data$performance_metric == min(response_data$performance_metric), ]
 
