@@ -52,8 +52,8 @@ cuda_device <- as.integer(args[1])
 resume_run_id <- as.integer(args[2])
 
 size_weight <- 10.0
-top1_weight <- 1.0
-top5_weight <- 1.0
+top1_weight <- 5.0
+top5_weight <- 5.0
 
 min_ratio <- 0.06
 
@@ -77,7 +77,7 @@ search_space <- NULL
 # top5: \in [0.0, 100.0], typical \in [65, 95]
 
 performance <- function(size_ratio, top1, top5){
-    return(((size_weight * abs(size_ratio - min_ratio)) +
+    return(((size_weight * (size_ratio - min_ratio) ^ 2) +
             (top1_weight * ((100.0 - top1) / 100.0)) +
             (top5_weight * ((100.0 - top5) / 100.0))) /
            (size_weight + top1_weight + top5_weight))
