@@ -52,10 +52,8 @@ cuda_device <- as.integer(args[1])
 resume_run_id <- as.integer(args[2])
 
 size_weight <- 10.0
-top1_weight <- 5.0
-top5_weight <- 5.0
-
-min_ratio <- 0.06
+top1_weight <- 2.0
+top5_weight <- 2.0
 
 network_sizes <- read.csv(network_sizes_data)
 network_specs <- network_sizes %>%
@@ -75,6 +73,8 @@ search_space <- NULL
 # size_ratio: \in [0.0, 1.0], typical \in [0.1, 0.2]
 # top1: \in [0.0, 100.0], typical \in [50, 95]
 # top5: \in [0.0, 100.0], typical \in [65, 95]
+
+min_ratio <- 0.06
 
 performance <- function(size_ratio, top1, top5){
     return(((size_weight * (size_ratio - min_ratio) ^ 2) +
