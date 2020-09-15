@@ -31,7 +31,7 @@ sobol_n <- starting_sobol_n
 
 bit_min <- 1
 bit_max <- 8
-perturbation_range <- 3 * (bit_min / bit_max)
+perturbation_range <- 1 * (bit_min / bit_max)
 
 gpr_iterations <- 30
 gpr_added_points <- 3
@@ -51,9 +51,9 @@ batch_size <- 128
 cuda_device <- as.integer(args[1])
 resume_run_id <- as.integer(args[2])
 
-size_weight <- 10.0
-top1_weight <- 1.5
-top5_weight <- 1.5
+size_weight <- 0.0
+top1_weight <- 1.0
+top5_weight <- 1.0
 
 network_sizes <- read.csv(network_sizes_data)
 network_specs <- network_sizes %>%
@@ -76,11 +76,104 @@ search_space <- NULL
 
 min_ratio <- 0.06
 
-performance <- function(size_ratio, top1, top5){
+weights <- read.csv("haq-autotuning-experiments/resnet50_sizes.csv", header = TRUE)
+
+sobol_partial <- 1000
+size_limits <- c(11.0, 9.0)
+
+compute_size <- function(n, sample){
+    as.numeric(weights[1,]) %*% (trunc(8 * as.numeric(sample[n, ])) + 1)
+}
+
+generate_filtered_sample <- function(size, sobol_n, limits){
+    temp_sobol <- sobol(n = sobol_n,
+                        dim = sobol_dim,
+                        scrambling = 2,
+                        seed = as.integer((99999 - 10000) * runif(1) + 10000),
+                        init = TRUE)
+
+    filtered_samples <- 0
+    samples <- NULL
+
+    while(filtered_samples < size){
+        design <- sobol(n = sobol_n,
+                        dim = sobol_dim,
+                        scrambling = 2,
+                        seed = as.integer((99999 - 10000) * runif(1) + 10000),
+                        init = FALSE)
+
+        sizes <- sapply(1:length(design[,1]), compute_size, design)
+        selected <- ((sizes / 8e6) < limits[1] & (sizes / 8e6) > limits[2])
+
+        if(is.null(samples)){
+            samples <- data.frame(design[selected, ])
+        } else{
+            samples <- bind_rows(samples,
+                                 data.frame(design[selected, ]))
+        }
+
+        filtered_samples <- filtered_samples + sum(selected)
+        rm(design)
+        print(filtered_samples)
+    }
+
+    return(sample_n(samples, size))
+}
+
+perturb_filtered_sample <- function(sample, size, sobol_n, range, limits){
+    temp_sobol <- sobol(n = sobol_n,
+                        dim = sobol_dim,
+                        scrambling = 2,
+                        seed = as.integer((99999 - 10000) * runif(1) + 10000),
+                        init = TRUE)
+
+    filtered_samples <- 0
+    samples <- NULL
+
+    while(filtered_samples < size){
+        perturbation <- sobol(n = sobol_n,
+                              dim = sobol_dim,
+                              scrambling = 2,
+                              seed = as.integer((99999 - 10000) * runif(1) + 10000),
+                              init = FALSE)
+
+        perturbation <- data.frame(perturbation)
+        perturbation <- (2 * range * perturbation) - range
+        perturbed <- sample + perturbation
+
+        perturbed[perturbed < 0.0] <- 0.1
+        perturbed[perturbed > 1.0] <- 0.9
+
+        sizes <- sapply(1:length(perturbed[,1]), compute_size, perturbed)
+        selected <- ((sizes / 8e6) < limits[1] & (sizes / 8e6) > limits[2])
+
+        if(is.null(samples)){
+            samples <- data.frame(perturbed[selected, ])
+        } else{
+            samples <- bind_rows(samples,
+                                 data.frame(perturbed[selected, ]))
+        }
+
+        filtered_samples <- filtered_samples + sum(selected)
+        rm(perturbed)
+        rm(perturbation)
+        print(filtered_samples)
+    }
+
+    return(sample_n(samples, size))
+}
+
+old_performance <- function(size_ratio, top1, top5){
     return(((size_weight * (size_ratio - min_ratio) ^ 2) +
             (top1_weight * ((100.0 - top1) / 100.0)) +
             (top5_weight * ((100.0 - top5) / 100.0))) /
            (size_weight + top1_weight + top5_weight))
+}
+
+performance <- function(size_ratio, top1, top5){
+    return(((top1_weight * ((100.0 - top1) / 100.0)) +
+            (top5_weight * ((100.0 - top5) / 100.0))) /
+           (top1_weight + top5_weight))
 }
 
 for(i in 1:iterations){
@@ -119,11 +212,9 @@ for(i in 1:iterations){
             design <- NULL
         }
 
-        design <- sobol(n = sobol_n,
-                        dim = sobol_dim,
-                        scrambling = 2,
-                        seed = as.integer((99999 - 10000) * runif(1) + 10000),
-                        init = FALSE)
+        design <- generate_filtered_sample(sobol_n,
+                                           sobol_partial,
+                                           size_limits)
 
         if(!(is.null(df_design))){
             rm(df_design)
@@ -131,7 +222,7 @@ for(i in 1:iterations){
             df_design <- NULL
         }
 
-        df_design <- data.frame(design)
+        df_design <- design
 
         # names(df_design) <- c(rbind(paste("W",
         #                                   seq(1:(sobol_dim / 2)),
@@ -275,13 +366,11 @@ for(i in 1:iterations){
             new_sample <- NULL
         }
 
-        new_sample <- sobol(n = gpr_sample_size,
-                            dim = sobol_dim,
-                            scrambling = 2,
-                            seed = as.integer((99999 - 10000) * runif(1) + 10000),
-                            init = FALSE)
+        new_sample <- generate_filtered_sample(gpr_sample_size,
+                                               sobol_partial,
+                                               size_limits)
 
-        new_sample <- data.frame(new_sample)
+        new_sample <- new_sample
 
         # names(new_sample) <- c(rbind(paste("W",
         #                                    seq(1:(sobol_dim / 2)),
@@ -326,36 +415,20 @@ for(i in 1:iterations){
             perturbation <- NULL
         }
 
-        perturbation <- sobol(n = gpr_added_points * gpr_neighbourhood_factor,
-                              dim = sobol_dim,
-                              scrambling = 2,
-                              seed = as.integer((99999 - 10000) * runif(1) + 10000),
-                              init = FALSE)
+        perturbation <- perturb_filtered_sample(gpr_selected_neighbourhood,
+                                                gpr_added_points * gpr_neighbourhood_factor,
+                                                sobol_partial,
+                                                perturbation_range,
+                                                size_limits)
 
-        perturbation <- data.frame(perturbation)
-
-        # names(perturbation) <- c(rbind(paste("W",
-        #                                     seq(1:(sobol_dim / 2)),
-        #                                     sep = ""),
-        #                               paste("A",
-        #                                     seq(1:(sobol_dim / 2)),
-        #                                     sep = "")))
-
-        perturbation <- (2 * perturbation_range * perturbation) - perturbation_range
-
-        gpr_selected_neighbourhood <- gpr_selected_points %>%
-            slice(rep(row_number(), gpr_neighbourhood_factor))
-
-        gpr_selected_neighbourhood <- gpr_selected_neighbourhood + perturbation
-
-        gpr_selected_neighbourhood[gpr_selected_neighbourhood < 0.0] <- 0.1
-        gpr_selected_neighbourhood[gpr_selected_neighbourhood > 1.0] <- 0.9
+        gpr_selected_neighbourhood <- perturbation
 
         gpr_sample <- bind_rows(gpr_sample, gpr_selected_neighbourhood) %>%
             distinct()
 
         gpr_selected_points <- bind_rows(gpr_selected_points,
                                          gpr_selected_neighbourhood)
+
         gpr_selected_points <- gpr_selected_points %>%
             distinct()
 
