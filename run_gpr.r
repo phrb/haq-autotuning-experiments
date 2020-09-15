@@ -76,7 +76,7 @@ search_space <- NULL
 
 min_ratio <- 0.06
 
-weights <- read.csv("haq-autotuning-experiments/resnet50_sizes.csv", header = TRUE)
+weights <- read.csv("resnet50_sizes.csv", header = TRUE)
 
 sobol_partial <- 1000
 size_limits <- c(11.0, 9.0)
