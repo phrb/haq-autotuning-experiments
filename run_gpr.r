@@ -415,7 +415,7 @@ for(i in 1:iterations){
             perturbation <- NULL
         }
 
-        perturbation <- perturb_filtered_sample(gpr_selected_neighbourhood,
+        perturbation <- perturb_filtered_sample(gpr_selected_points,
                                                 gpr_added_points * gpr_neighbourhood_factor,
                                                 sobol_partial,
                                                 perturbation_range,
