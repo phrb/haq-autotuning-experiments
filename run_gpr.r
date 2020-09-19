@@ -79,7 +79,7 @@ min_ratio <- 0.06
 weights <- read.csv("resnet50_sizes.csv", header = TRUE)
 
 sobol_partial <- 1000
-size_limits <- c(11.0, 9.0)
+size_limits <- c(10.0, 2.0)
 
 compute_size <- function(n, sample){
     as.numeric(weights[1,]) %*% (trunc(8 * as.numeric(sample[n, ])) + 1)
