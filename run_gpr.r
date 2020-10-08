@@ -31,15 +31,19 @@ sobol_n <- starting_sobol_n
 
 bit_min <- 1
 bit_max <- 8
-perturbation_range <- 1 * (bit_min / bit_max)
+perturbation_range <- 2 * (bit_min / bit_max)
 
 gpr_iterations <- 30
 gpr_added_points <- 3
 
 gpr_added_neighbours <- 3
-gpr_neighbourhood_factor <- 1000
+gpr_neighbourhood_factor <- 4000
 
-gpr_sample_size <- 60 * sobol_dim
+perturbed_sample_multiplier <- ceiling((gpr_added_points *
+                                        neighbourhood_factor) /
+                                       gpr_added_points)
+
+gpr_sample_size <- 100 * sobol_dim
 
 total_measurements <- starting_sobol_n + (gpr_iterations * (gpr_added_points + gpr_added_neighbours))
 
@@ -78,7 +82,7 @@ min_ratio <- 0.06
 
 weights <- read.csv("resnet50_sizes.csv", header = TRUE)
 
-sobol_partial <- 1000
+sobol_partial <- 20000
 size_limits <- c(10.0, 1.0)
 
 compute_size <- function(n, sample){
@@ -92,29 +96,25 @@ generate_filtered_sample <- function(size, sobol_n, limits){
                         seed = as.integer((99999 - 10000) * runif(1) + 10000),
                         init = TRUE)
 
-    filtered_samples <- 0
+    sobol_size <- sobol_n
     samples <- NULL
+    filtered_samples = 0
 
     while(filtered_samples < size){
-        design <- sobol(n = sobol_n,
+        design <- sobol(n = sobol_size,
                         dim = sobol_dim,
                         scrambling = 2,
                         seed = as.integer((99999 - 10000) * runif(1) + 10000),
                         init = FALSE)
 
+        sobol_size <- sobol_size * 2
+
         sizes <- sapply(1:length(design[,1]), compute_size, design)
         selected <- ((sizes / 8e6) < limits[1] & (sizes / 8e6) > limits[2])
 
-        if(is.null(samples)){
-            samples <- data.frame(design[selected, ])
-        } else{
-            samples <- bind_rows(samples,
-                                 data.frame(design[selected, ]))
-        }
-
-        filtered_samples <- filtered_samples + sum(selected)
+        samples <- data.frame(design[selected, ])
+        filtered_samples = length(samples[, 1])
         rm(design)
-        print(filtered_samples)
     }
 
     return(sample_n(samples, size))
@@ -144,7 +144,7 @@ perturb_filtered_sample <- function(sample, size, sobol_n, range, limits){
         perturbed[perturbed < 0.0] <- 0.1
         perturbed[perturbed > 1.0] <- 0.9
 
-        sizes <- sapply(1:length(perturbed[,1]), compute_size, perturbed)
+        sizes <- sapply(1:length(perturbed[, 1]), compute_size, perturbed)
         selected <- ((sizes / 8e6) < limits[1] & (sizes / 8e6) > limits[2])
 
         if(is.null(samples)){
@@ -383,18 +383,19 @@ for(i in 1:iterations){
 
         print("Computing EI")
         # Using the EI function from DiceOptim:
-        # gpr_sample$expected_improvement <- future_apply(gpr_sample,
-        #                                                 1,
-        #                                                 EI,
-        #                                                 gpr_model)
-        # gpr_selected_points <- gpr_sample %>%
-        #     arrange(desc(expected_improvement))
-
-        pred <- predict(gpr_model, gpr_sample, "UK")
-        gpr_sample$expected_improvement <- pred$mean - (1.96 * pred$sd)
-
+        gpr_sample$expected_improvement <- future_apply(gpr_sample,
+                                                        1,
+                                                        EI,
+                                                        gpr_model)
         gpr_selected_points <- gpr_sample %>%
-            arrange(expected_improvement)
+            arrange(desc(expected_improvement))
+
+        # Using mean - 2 * sigma:
+        # pred <- predict(gpr_model, gpr_sample, "UK")
+        # gpr_sample$expected_improvement <- pred$mean - (1.96 * pred$sd)
+
+        # gpr_selected_points <- gpr_sample %>%
+        #     arrange(expected_improvement)
 
         gpr_sample <- select(gpr_sample, -expected_improvement)
 
@@ -409,9 +410,15 @@ for(i in 1:iterations){
             perturbation <- NULL
         }
 
-        perturbation <- perturb_filtered_sample(gpr_selected_points,
-                                                gpr_added_points * gpr_neighbourhood_factor,
-                                                length(gpr_selected_points[, 1]),
+        perturbation <- gpr_selected_points %>%
+            slice(rep(row_number(),
+                      perturbed_sample_multiplier)) %>%
+            slice(1:(gpr_added_points *
+                     gpr_neighbourhood_factor))
+
+        perturbation <- perturb_filtered_sample(perturbation,
+                                                length(perturbation[, 1]),
+                                                length(perturbation[, 1]),
                                                 perturbation_range,
                                                 size_limits)
 
@@ -429,30 +436,25 @@ for(i in 1:iterations){
         print("Computing perturbed EI")
 
         # Using EI from DiceOptim:
-        # gpr_selected_points$expected_improvement <- future_apply(gpr_selected_points,
-        #                                                          1,
-        #                                                          EI,
-        #                                                          gpr_model)
-        # gpr_selected_points <- gpr_selected_points %>%
-        #     arrange(desc(expected_improvement))
-
-        pred <- predict(gpr_model, gpr_selected_points, "UK")
-        gpr_selected_points$expected_improvement <- pred$mean - (1.96 * pred$sd)
-
+        gpr_selected_points$expected_improvement <- future_apply(gpr_selected_points,
+                                                                 1,
+                                                                 EI,
+                                                                 gpr_model)
         gpr_selected_points <- gpr_selected_points %>%
-            arrange(expected_improvement)
+            arrange(desc(expected_improvement))
+
+        # Using mean - 2 * sigma:
+        # pred <- predict(gpr_model, gpr_selected_points, "UK")
+        # gpr_selected_points$expected_improvement <- pred$mean - (1.96 * pred$sd)
+
+        # gpr_selected_points <- gpr_selected_points %>%
+        #     arrange(expected_improvement)
 
         gpr_selected_points <- select(gpr_selected_points[1:(gpr_added_points +
                                                              gpr_added_neighbours), ],
                                       -expected_improvement)
 
         df_design <- data.frame(gpr_selected_points)
-        # names(df_design) <- c(rbind(paste("W",
-        #                                   seq(1:(sobol_dim / 2)),
-        #                                   sep = ""),
-        #                             paste("A",
-        #                                   seq(1:(sobol_dim / 2)),
-        #                                   sep = "")))
 
         write.csv(df_design,
                   paste("current_design_",
