@@ -40,7 +40,7 @@ gpr_added_neighbours <- 3
 gpr_neighbourhood_factor <- 4000
 
 perturbed_sample_multiplier <- ceiling((gpr_added_points *
-                                        neighbourhood_factor) /
+                                        gpr_neighbourhood_factor) /
                                        gpr_added_points)
 
 gpr_sample_size <- 100 * sobol_dim
