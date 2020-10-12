@@ -6,7 +6,7 @@ library(DiceKriging)
 library(DiceOptim)
 library(future.apply)
 
-plan(multiprocess, workers = 256)
+plan(multiprocess, workers = 40)
 
 args = commandArgs(trailingOnly = TRUE)
 
@@ -37,7 +37,7 @@ gpr_iterations <- 30
 gpr_added_points <- 3
 
 gpr_added_neighbours <- 3
-gpr_neighbourhood_factor <- 4000
+gpr_neighbourhood_factor <- 1000
 
 perturbed_sample_multiplier <- ceiling((gpr_added_points *
                                         gpr_neighbourhood_factor) /
