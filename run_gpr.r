@@ -75,7 +75,7 @@ search_space <- NULL
 # top5: \in [0.0, 100.0], typical \in [65, 95]
 
 size_weight <- 0.0
-top1_weight <- 0.0
+top1_weight <- 1.0
 top5_weight <- 1.0
 
 min_ratio <- 0.06
