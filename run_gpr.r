@@ -33,11 +33,12 @@ bit_min <- 1
 bit_max <- 8
 perturbation_range <- 2 * (bit_min / bit_max)
 
-gpr_iterations <- 30
 gpr_added_points <- 3
-
 gpr_added_neighbours <- 3
 gpr_neighbourhood_factor <- 1000
+
+gpr_total_selected_points <- 1
+gpr_iterations <- 245 - starting_sobol_n
 
 perturbed_sample_multiplier <- ceiling((gpr_added_points *
                                         gpr_neighbourhood_factor) /
@@ -45,7 +46,7 @@ perturbed_sample_multiplier <- ceiling((gpr_added_points *
 
 gpr_sample_size <- 60 * sobol_dim
 
-total_measurements <- starting_sobol_n + (gpr_iterations * (gpr_added_points + gpr_added_neighbours))
+total_measurements <- starting_sobol_n + (gpr_iterations * gpr_total_selected_points)
 
 network <- "resnet50"
 network_sizes_data <- "network_sizes_data.csv"
@@ -399,7 +400,10 @@ for(i in 1:iterations){
 
         gpr_sample <- select(gpr_sample, -expected_improvement)
 
-        gpr_selected_points <- select(gpr_selected_points[1:gpr_added_points, ],
+        # gpr_selected_points <- select(gpr_selected_points[1:gpr_added_points, ],
+        #                               -expected_improvement)
+
+        gpr_selected_points <- select(gpr_selected_points[1:gpr_total_selected_points, ],
                                       -expected_improvement)
 
         print("Generating perturbation sample")
@@ -450,8 +454,11 @@ for(i in 1:iterations){
         # gpr_selected_points <- gpr_selected_points %>%
         #     arrange(expected_improvement)
 
-        gpr_selected_points <- select(gpr_selected_points[1:(gpr_added_points +
-                                                             gpr_added_neighbours), ],
+        # gpr_selected_points <- select(gpr_selected_points[1:(gpr_added_points +
+        #                                                      gpr_added_neighbours), ],
+        #                               -expected_improvement)
+
+        gpr_selected_points <- select(gpr_selected_points[1:gpr_total_selected_points, ],
                                       -expected_improvement)
 
         df_design <- data.frame(gpr_selected_points)
