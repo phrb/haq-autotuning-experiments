@@ -12,6 +12,7 @@ import torch.utils.data
 import torchvision.transforms as transforms
 import torchvision.datasets as datasets
 from torch.utils.data.sampler import SubsetRandomSampler
+import time
 
 
 def get_dataset(dataset_name, batch_size, n_worker, data_root='data/imagenet', for_inception=False):
@@ -54,8 +55,10 @@ def get_dataset(dataset_name, batch_size, n_worker, data_root='data/imagenet', f
     return train_loader, val_loader, n_class
 
 
-def get_split_train_dataset(dataset_name, batch_size, n_worker, val_size, train_size=None, random_seed=1,
-                            data_root='data/imagenet', for_inception=False, shuffle=True):
+def get_split_train_dataset(dataset_name, batch_size, n_worker, val_size,
+                            train_size=None, random_seed=1,
+                            data_root='data/imagenet',
+                            for_inception=False, shuffle=True):
     if shuffle:
         index_sampler = SubsetRandomSampler
     else:
@@ -95,8 +98,11 @@ def get_split_train_dataset(dataset_name, batch_size, n_worker, val_size, train_
         n_train = len(trainset)
         indices = list(range(n_train))
         # shuffle the indices
-        # np.random.seed(random_seed)
+        # Fix seed for image selection
+        # between GPR calls
+        np.random.seed(random_seed)
         np.random.shuffle(indices)
+
         assert val_size < n_train, 'val size should less than n_train'
         train_idx, val_idx = indices[val_size:], indices[:val_size]
         if train_size:
@@ -111,6 +117,10 @@ def get_split_train_dataset(dataset_name, batch_size, n_worker, val_size, train_
         val_loader = torch.utils.data.DataLoader(valset, batch_size=batch_size, sampler=val_sampler,
                                                  num_workers=n_worker, pin_memory=True)
         n_class = 1000
+
+        # Restore pseudo-random seed state
+        t = 1000 * time.time()
+        np.random.seed(int(t) % 2**32)
     else:
         raise NotImplementedError
 

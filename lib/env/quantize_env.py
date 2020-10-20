@@ -271,8 +271,12 @@ class QuantizeEnv:
 
     def _init_data(self):
         self.train_loader, self.val_loader, n_class = get_split_train_dataset(
-            self.data_type, self.batch_size, self.n_data_worker, data_root=self.data_root,
-            val_size=self.val_size, train_size=self.train_size, for_inception=self.is_inception)
+            self.data_type, self.batch_size, self.n_data_worker,
+            data_root=self.data_root,
+            val_size=self.val_size,
+            train_size=self.train_size,
+            random_seed = self.run_id,
+            for_inception=self.is_inception)
 
     def _build_index(self):
         self.quantizable_idx = []
