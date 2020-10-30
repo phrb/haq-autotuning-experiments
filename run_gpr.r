@@ -52,7 +52,7 @@ network <- "resnet50"
 network_sizes_data <- "network_sizes_data.csv"
 
 preserve_ratio <- 0.1
-batch_size <- 128
+batch_size <- 512
 cuda_device <- as.integer(args[1])
 resume_run_id <- as.integer(args[2])
 
