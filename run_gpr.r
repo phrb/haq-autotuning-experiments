@@ -44,7 +44,7 @@ perturbed_sample_multiplier <- ceiling((gpr_added_points *
                                         gpr_neighbourhood_factor) /
                                        gpr_added_points)
 
-gpr_sample_size <- 60 * sobol_dim
+gpr_sample_size <- 10 * 60 * sobol_dim
 
 total_measurements <- starting_sobol_n + (gpr_iterations * gpr_total_selected_points)
 
@@ -297,37 +297,6 @@ for(i in 1:iterations){
             size_df <- NULL
         }
 
-        # size_df <- select(search_space, -Top5, -Top1)
-        # formulas <- character(length(names(size_df)))
-
-        # for(k in 1:length(names(size_df))){
-        #     formulas[k] <- paste(names(size_df)[k],
-        #                          "e ~ trunc((8 * ",
-        #                          names(size_df)[k],
-        #                          ") + 1)",
-        #                          sep = "")
-        # }
-
-        # if(!(is.null(coded_size_df))){
-        #     rm(coded_size_df)
-        #     quiet(gc())
-        #     coded_size_df <- NULL
-        # }
-
-        # coded_size_df <- coded.data(size_df, formulas = lapply(formulas, formula))
-        # coded_size_df <- round(data.frame(coded_size_df))
-        # coded_size_df$id <- seq(1:length(coded_size_df$A1e))
-        # coded_size_df <- gather(coded_size_df, "Layer", "Bitwidth", -id)
-
-        # coded_size_df <- coded_size_df %>%
-        #     group_by(id) %>%
-        #     do(mutate(., weights_MB = sum((network_specs$parameters *
-        #                                    (filter(., grepl("W", Layer))$Bitwidth / 8)) / 1e6))) %>%
-        #     do(mutate(., activations_MB = sum((network_specs$activations *
-        #                                        (filter(., grepl("A", Layer))$Bitwidth / 8)) / 1e6))) %>%
-        #     summarize(total_size_MB = unique(weights_MB) + unique(activations_MB),
-        #               network_size_MB = sum(network_specs$bits8_size_MB))
-
         print("Search space:")
         print(str(search_space))
         # print("Coded weight df:")
@@ -339,11 +308,6 @@ for(i in 1:iterations){
             gpr_model <- NULL
         }
 
-        # y <- ((size_weight * (coded_size_df$total_size_MB / coded_size_df$network_size_MB)) +
-        # y <- ((size_weight * (search_space$SizeRatio)) +
-        #       (top1_weight * ((100.0 - search_space$Top1) / 100.0)) +
-        #       (top5_weight * ((100.0 - search_space$Top5) / 100.0))) /
-        #     (size_weight + top1_weight + top5_weight)
         y <- performance(search_space$SizeRatio, search_space$Top1, search_space$Top5)
 
         gpr_model <- km(formula = ~ .,
@@ -355,34 +319,23 @@ for(i in 1:iterations){
 
         print("Generating Sample")
 
-        if(!(is.null(new_sample))){
+        if(is.null(gpr_sample)){
+            new_sample <- generate_filtered_sample(gpr_sample_size,
+                                                   sobol_partial,
+                                                   size_limits)
+
+            gpr_sample <- new_sample %>%
+                distinct()
+
             rm(new_sample)
             quiet(gc())
             new_sample <- NULL
-        }
 
-        new_sample <- generate_filtered_sample(gpr_sample_size,
-                                               sobol_partial,
-                                               size_limits)
-
-        new_sample <- new_sample
-
-        # names(new_sample) <- c(rbind(paste("W",
-        #                                    seq(1:(sobol_dim / 2)),
-        #                                    sep = ""),
-        #                              paste("A",
-        #                                    seq(1:(sobol_dim / 2)),
-        #                                    sep = "")))
-
-        if(is.null(gpr_sample)){
-            gpr_sample <- new_sample %>%
-                distinct()
-        } else{
-            gpr_sample <- bind_rows(gpr_sample, new_sample) %>%
-                distinct()
         }
 
         print("Computing EI")
+        print(nrow(gpr_sample))
+
         # Using the EI function from DiceOptim:
         gpr_sample$expected_improvement <- future_apply(gpr_sample,
                                                         1,
@@ -438,6 +391,7 @@ for(i in 1:iterations){
             distinct()
 
         print("Computing perturbed EI")
+        print(nrow(gpr_selected_points))
 
         # Using EI from DiceOptim:
         gpr_selected_points$expected_improvement <- future_apply(gpr_selected_points,
@@ -526,36 +480,6 @@ for(i in 1:iterations){
     }
 
     elapsed_time <- as.integer(format(Sys.time(), "%s")) - start_time
-
-    # Optimizing for Top5 (Top1, Model Size, Latency... ?)
-
-    # top5 only
-    # best_points <- filter(search_space, Top5 == max(Top5))
-
-    # size_df <- select(search_space, -Top5, -Top1)
-    # formulas <- character(length(names(size_df)))
-
-    # for(k in 1:length(names(size_df))){
-    #     formulas[k] <- paste(names(size_df)[k],
-    #                          "e ~ trunc((8 * ",
-    #                          names(size_df)[k],
-    #                          ") + 1)",
-    #                          sep = "")
-    # }
-
-    # coded_size_df <- coded.data(size_df, formulas = lapply(formulas, formula))
-    # coded_size_df <- round(data.frame(coded_size_df))
-    # coded_size_df$id <- seq(1:length(coded_size_df$A1e))
-    # coded_size_df <- gather(coded_size_df, "Layer", "Bitwidth", -id)
-
-    # coded_size_df <- coded_size_df %>%
-    #     group_by(id) %>%
-    #     do(mutate(., weights_MB = sum((network_specs$parameters *
-    #                                    (filter(., grepl("W", Layer))$Bitwidth / 8)) / 1e6))) %>%
-    #     do(mutate(., activations_MB = sum((network_specs$activations *
-    #                                        (filter(., grepl("A", Layer))$Bitwidth / 8)) / 1e6))) %>%
-    #     summarize(total_size_MB = unique(weights_MB) + unique(activations_MB),
-    #               network_size_MB = sum(network_specs$bits8_size_MB))
 
     response_data <- search_space %>%
         mutate(performance_metric = performance(search_space$SizeRatio,
