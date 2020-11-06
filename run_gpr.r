@@ -119,7 +119,7 @@ generate_filtered_sample <- function(size, sobol_n, limits){
         # Sequential apply
         # sizes <- sapply(1:length(design[,1]), compute_size, design)
 
-        sizes <- future_apply(row_compute_size, design)
+        sizes <- future_apply(design, 1, row_compute_size)
         selected <- ((sizes / 8e6) < limits[1] & (sizes / 8e6) > limits[2])
 
         samples <- data.frame(design[selected, ])
@@ -157,7 +157,7 @@ perturb_filtered_sample <- function(sample, size, sobol_n, range, limits){
         # Sequential apply
         # sizes <- sapply(1:length(perturbed[, 1]), compute_size, perturbed)
 
-        sizes <- future_apply(row_compute_size, perturbed)
+        sizes <- future_apply(perturbed, 1, row_compute_size)
         selected <- ((sizes / 8e6) < limits[1] & (sizes / 8e6) > limits[2])
 
         if(is.null(samples)){
