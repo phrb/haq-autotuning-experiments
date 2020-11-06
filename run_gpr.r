@@ -90,6 +90,10 @@ compute_size <- function(n, sample){
     as.numeric(weights[1,]) %*% (trunc(8 * as.numeric(sample[n, ])) + 1)
 }
 
+row_compute_size <- function(sample){
+    as.numeric(weights[1,]) %*% (trunc(8 * as.numeric(sample)) + 1)
+}
+
 generate_filtered_sample <- function(size, sobol_n, limits){
     temp_sobol <- sobol(n = sobol_n,
                         dim = sobol_dim,
@@ -112,7 +116,10 @@ generate_filtered_sample <- function(size, sobol_n, limits){
 
         sobol_size <- sobol_size * 2
 
-        sizes <- sapply(1:length(design[,1]), compute_size, design)
+        # Sequential apply
+        # sizes <- sapply(1:length(design[,1]), compute_size, design)
+
+        sizes <- future_apply(row_compute_size, design)
         selected <- ((sizes / 8e6) < limits[1] & (sizes / 8e6) > limits[2])
 
         samples <- data.frame(design[selected, ])
@@ -147,7 +154,10 @@ perturb_filtered_sample <- function(sample, size, sobol_n, range, limits){
         perturbed[perturbed < 0.0] <- 0.1
         perturbed[perturbed > 1.0] <- 0.9
 
-        sizes <- sapply(1:length(perturbed[, 1]), compute_size, perturbed)
+        # Sequential apply
+        # sizes <- sapply(1:length(perturbed[, 1]), compute_size, perturbed)
+
+        sizes <- future_apply(row_compute_size, perturbed)
         selected <- ((sizes / 8e6) < limits[1] & (sizes / 8e6) > limits[2])
 
         if(is.null(samples)){
