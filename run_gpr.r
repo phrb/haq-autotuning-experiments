@@ -102,6 +102,8 @@ generate_filtered_sample <- function(size, sobol_n, limits){
     filtered_samples = 0
 
     while(filtered_samples < size){
+        print(paste("Current filtered samples:",
+                    filtered_samples))
         design <- sobol(n = sobol_size,
                         dim = sobol_dim,
                         scrambling = 2,
