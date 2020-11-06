@@ -35,7 +35,7 @@ perturbation_range <- 2 * (bit_min / bit_max)
 
 gpr_added_points <- 3
 gpr_added_neighbours <- 3
-gpr_neighbourhood_factor <- 400
+gpr_neighbourhood_factor <- 500
 
 gpr_total_selected_points <- 1
 gpr_iterations <- 245 - starting_sobol_n
@@ -83,7 +83,7 @@ min_ratio <- 0.06
 
 weights <- read.csv("resnet50_sizes.csv", header = TRUE)
 
-sobol_partial <- 450000
+sobol_partial <- 900000
 size_limits <- c(10.0, 1.0)
 
 compute_size <- function(n, sample){
@@ -114,13 +114,19 @@ generate_filtered_sample <- function(size, sobol_n, limits){
                         seed = as.integer((99999 - 10000) * runif(1) + 10000),
                         init = FALSE)
 
+        print("Generated design")
+
         sobol_size <- sobol_size * 2
 
         # Sequential apply
         # sizes <- sapply(1:length(design[,1]), compute_size, design)
 
         sizes <- future_apply(design, 1, row_compute_size)
+
+        print("Applied filter")
         selected <- ((sizes / 8e6) < limits[1] & (sizes / 8e6) > limits[2])
+
+        print("Selected valid samples")
 
         samples <- data.frame(design[selected, ])
         filtered_samples = length(samples[, 1])
