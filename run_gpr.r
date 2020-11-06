@@ -44,7 +44,7 @@ perturbed_sample_multiplier <- ceiling((gpr_added_points *
                                         gpr_neighbourhood_factor) /
                                        gpr_added_points)
 
-gpr_sample_size <- 2 * 60 * sobol_dim
+gpr_sample_size <- 60 * sobol_dim
 
 total_measurements <- starting_sobol_n + (gpr_iterations * gpr_total_selected_points)
 
