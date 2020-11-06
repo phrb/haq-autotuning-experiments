@@ -35,7 +35,7 @@ perturbation_range <- 2 * (bit_min / bit_max)
 
 gpr_added_points <- 3
 gpr_added_neighbours <- 3
-gpr_neighbourhood_factor <- 1000
+gpr_neighbourhood_factor <- 400
 
 gpr_total_selected_points <- 1
 gpr_iterations <- 245 - starting_sobol_n
@@ -52,7 +52,7 @@ network <- "resnet50"
 network_sizes_data <- "network_sizes_data.csv"
 
 preserve_ratio <- 0.1
-batch_size <- 64
+batch_size <- 128
 cuda_device <- as.integer(args[1])
 resume_run_id <- as.integer(args[2])
 
