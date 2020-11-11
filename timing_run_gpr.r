@@ -57,6 +57,10 @@ cuda_device <- as.integer(args[1])
 resume_run_id <- as.integer(args[2])
 resume_run_path <- args[3]
 
+print(paste("Args:", args))
+print(paste("Restoring from chosen path:",
+            resume_run_path))
+
 network_sizes <- read.csv(network_sizes_data)
 network_specs <- network_sizes %>%
     filter(id == network)
