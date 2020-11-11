@@ -55,6 +55,7 @@ preserve_ratio <- 0.1
 batch_size <- 128
 cuda_device <- as.integer(args[1])
 resume_run_id <- as.integer(args[2])
+resume_run_path <- args[3]
 
 network_sizes <- read.csv(network_sizes_data)
 network_specs <- network_sizes %>%
@@ -295,11 +296,17 @@ for(i in 1:iterations){
         current_results <- NULL
     }
 
-    current_results <- read.csv(paste("current_results_",
-                                      run_id,
-                                      ".csv",
-                                      sep = ""),
-                                header = TRUE)
+    if(!is.na(resume_run_path)){
+        print(paste("Resuming run at path:", resume_run_path))
+        current_results <- read.csv(resume_run_path,
+                                    header = TRUE)
+    } else{
+        current_results <- read.csv(paste("current_results_",
+                                          run_id,
+                                          ".csv",
+                                          sep = ""),
+                                    header = TRUE)
+    }
 
     if(is.null(search_space)){
         search_space <- current_results
