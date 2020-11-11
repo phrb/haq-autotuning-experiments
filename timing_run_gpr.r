@@ -513,6 +513,7 @@ for(i in 1:iterations){
                      #gpr_added_points + gpr_added_neighbours,
                      gpr_total_selected_points,
                      " --finetune_flag",
+                     " --no-baseline",
                      " --use_top1",
                      " --run_id ",
                      run_id,

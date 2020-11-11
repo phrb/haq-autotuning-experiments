@@ -92,7 +92,10 @@ class QuantizeEnv:
 
         self.model.load_state_dict(self.pretrained_model, strict=True)
 
-        top_accs = self._validate(self.val_loader, self.model)
+        if self.args.no_baseline_flag:
+            top_accs = {"top1": 90.0, "top5": 90.0}
+        else:
+            top_accs = self._validate(self.val_loader, self.model)
 
         print("Original Top1: {0}".format(top_accs["top1"]))
         print("Original Top5: {0}".format(top_accs["top5"]))

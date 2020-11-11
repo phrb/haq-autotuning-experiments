@@ -186,6 +186,7 @@ if __name__ == "__main__":
     parser.add_argument('--finetune_gamma', default=0.8, type=float, help='finetune gamma')
     parser.add_argument('--finetune_lr', default=0.001, type=float, help='finetune gamma')
     parser.add_argument('--finetune_flag', dest="finetune_flag", action="store_true", help='whether to finetune')
+    parser.add_argument('--no-baseline', dest="no_baseline_flag", action="store_true", help='whether to compute the baseline')
     parser.add_argument('--no-finetune', dest="finetune_flag", action="store_false", help='whether to finetune')
     parser.add_argument('--use_top5', dest="use_top5", action="store_true", help='whether to use top5 acc in reward')
     parser.add_argument('--use_top1', dest="use_top5", action="store_false", help='whether to use top1 acc in reward')
