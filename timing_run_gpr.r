@@ -585,7 +585,7 @@ for(i in 1:iterations){
                         sep = ""),
                   row.names = FALSE)
 
-        if(length(search_space[1, ]) >= total_measurements){
+        if(length(search_space[, 1]) >= total_measurements){
             break
         }
     }
