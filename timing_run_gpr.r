@@ -479,14 +479,14 @@ for(i in 1:iterations){
         #                                                      gpr_added_neighbours), ],
         #                               -expected_improvement)
 
-        gpr_selected_points <- select(gpr_selected_points[1:gpr_total_selected_points, ],
-                                      -expected_improvement)
-
         gpr_sample <- bind_rows(gpr_sample,
                                 select(gpr_selected_points[1:(gpr_added_points +
                                                               gpr_added_neighbours), ],
                                        -expected_improvement)) %>%
             distinct()
+
+        gpr_selected_points <- select(gpr_selected_points[1:gpr_total_selected_points, ],
+                                      -expected_improvement)
 
         df_design <- data.frame(gpr_selected_points)
 
