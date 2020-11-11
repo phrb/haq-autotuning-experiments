@@ -165,7 +165,6 @@ perturb_filtered_sample <- function(sample, size, sobol_n, range, limits){
         print("Generated design")
 
         sobol_size <- sobol_size * 2
-        sample <- bind_rows(sample, sample)
 
         perturbation <- data.frame(perturbation)
         perturbation <- (2 * range * perturbation) - range
@@ -173,6 +172,8 @@ perturb_filtered_sample <- function(sample, size, sobol_n, range, limits){
 
         perturbed[perturbed < 0.0] <- 0.1
         perturbed[perturbed > 1.0] <- 0.9
+
+        sample <- bind_rows(sample, sample)
 
         # Sequential apply
         # sizes <- sapply(1:length(perturbed[, 1]), compute_size, perturbed)
