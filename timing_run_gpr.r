@@ -182,13 +182,6 @@ perturb_filtered_sample <- function(sample, size, sobol_n, range, limits){
         print("Applied filter")
         selected <- ((sizes / 8e6) < limits[1] & (sizes / 8e6) > limits[2])
 
-        if(is.null(samples)){
-            samples <- data.frame(perturbed[selected, ])
-        } else{
-            samples <- bind_rows(samples,
-                                 data.frame(perturbed[selected, ]))
-        }
-
         samples <- data.frame(perturbed[selected, ])
         filtered_samples <- length(samples[, 1])
 
