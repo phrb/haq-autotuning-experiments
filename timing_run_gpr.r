@@ -40,10 +40,6 @@ gpr_neighbourhood_factor <- 500
 gpr_total_selected_points <- 1
 gpr_iterations <- 245 - starting_sobol_n
 
-perturbed_sample_multiplier <- ceiling((gpr_added_points *
-                                        gpr_neighbourhood_factor) /
-                                       gpr_added_points)
-
 gpr_sample_size <- 60 * sobol_dim
 
 total_measurements <- starting_sobol_n + (gpr_iterations * gpr_total_selected_points)
@@ -89,6 +85,9 @@ min_ratio <- 0.06
 weights <- read.csv("resnet50_sizes.csv", header = TRUE)
 
 sobol_partial <- 900000
+sobol_neighbourhood_partial <- 500000
+perturbed_sample_multiplier <- ceiling(sobol_neighbourhood_partial / gpr_added_points)
+
 size_limits <- c(10.0, 1.0)
 
 timing_info <- NULL
@@ -150,15 +149,23 @@ perturb_filtered_sample <- function(sample, size, sobol_n, range, limits){
                         seed = as.integer((99999 - 10000) * runif(1) + 10000),
                         init = TRUE)
 
-    filtered_samples <- 0
+    sobol_size <- sobol_n
     samples <- NULL
+    filtered_samples <- 0
 
     while(filtered_samples < size){
-        perturbation <- sobol(n = sobol_n,
+        print(paste("Current filtered samples:",
+                    filtered_samples))
+        perturbation <- sobol(n = sobol_size,
                               dim = sobol_dim,
                               scrambling = 2,
                               seed = as.integer((99999 - 10000) * runif(1) + 10000),
                               init = FALSE)
+
+        print("Generated design")
+
+        sobol_size <- sobol_size * 2
+        sample <- bind_rows(sample, sample)
 
         perturbation <- data.frame(perturbation)
         perturbation <- (2 * range * perturbation) - range
@@ -171,6 +178,8 @@ perturb_filtered_sample <- function(sample, size, sobol_n, range, limits){
         # sizes <- sapply(1:length(perturbed[, 1]), compute_size, perturbed)
 
         sizes <- future_apply(perturbed, 1, row_compute_size)
+
+        print("Applied filter")
         selected <- ((sizes / 8e6) < limits[1] & (sizes / 8e6) > limits[2])
 
         if(is.null(samples)){
@@ -180,10 +189,11 @@ perturb_filtered_sample <- function(sample, size, sobol_n, range, limits){
                                  data.frame(perturbed[selected, ]))
         }
 
-        filtered_samples <- filtered_samples + sum(selected)
+        samples <- data.frame(perturbed[selected, ])
+        filtered_samples <- length(samples[, 1])
+
         rm(perturbed)
         rm(perturbation)
-        print(filtered_samples)
     }
 
     return(sample_n(samples, size))
@@ -285,11 +295,11 @@ for(i in 1:iterations){
                      " --train_size 20000",
                      sep = "")
 
-        initial_design_measure_time <- (proc.time() -
-                                        initial_design_measure_start_time)[["elapsed"]]
-
         print(cmd)
         system(cmd)
+
+        initial_design_measure_time <- (proc.time() -
+                                        initial_design_measure_start_time)[["elapsed"]]
 
         system("rm -r ../../save")
     }
@@ -429,14 +439,13 @@ for(i in 1:iterations){
         perturbation <- gpr_selected_points %>%
             slice(rep(row_number(),
                       perturbed_sample_multiplier)) %>%
-            slice(1:(gpr_added_points *
-                     gpr_neighbourhood_factor))
+            slice(1:sobol_neighbourhood_partial)
 
         neighbour_ei_design_start_time <- proc.time()
 
         perturbation <- perturb_filtered_sample(perturbation,
-                                                length(perturbation[, 1]),
-                                                length(perturbation[, 1]),
+                                                gpr_added_points * gpr_neighbourhood_factor,
+                                                sobol_neighbourhood_partial,
                                                 perturbation_range,
                                                 size_limits)
 
@@ -519,11 +528,11 @@ for(i in 1:iterations){
                      " --train_size 20000",
                      sep = "")
 
-        neighbour_design_measure_time <- (proc.time() -
-                                          neighbour_design_measure_start_time)[["elapsed"]]
-
         print(cmd)
         system(cmd)
+
+        neighbour_design_measure_time <- (proc.time() -
+                                          neighbour_design_measure_start_time)[["elapsed"]]
 
         system("rm -r ../../save")
 
