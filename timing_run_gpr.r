@@ -280,6 +280,7 @@ for(i in 1:iterations){
                      " --n_worker 120 --warmup -1 --train_episode ",
                      sobol_n,
                      " --finetune_flag",
+                     " --no-baseline",
                      " --use_top1",
                      " --run_id ",
                      run_id,
