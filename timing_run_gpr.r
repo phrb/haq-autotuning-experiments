@@ -86,6 +86,8 @@ weights <- read.csv("resnet50_sizes.csv", header = TRUE)
 sobol_partial <- 900000
 size_limits <- c(10.0, 1.0)
 
+timing_info <- NULL
+
 compute_size <- function(n, sample){
     as.numeric(weights[1,]) %*% (trunc(8 * as.numeric(sample[n, ])) + 1)
 }
@@ -216,6 +218,8 @@ for(i in 1:iterations){
     if(i == 1 && resume_run_id != -1){
         print(paste("Resuming run:", resume_run_id))
         run_id <- resume_run_id
+        initial_design_time <- -1
+        initial_design_measure_time <- -1
     } else{
         run_id <- round(100000 * runif(1))
 
@@ -225,9 +229,13 @@ for(i in 1:iterations){
             design <- NULL
         }
 
+        initial_design_start_time <- proc.time()
+
         design <- generate_filtered_sample(sobol_n,
                                            sobol_partial,
                                            size_limits)
+
+        initial_design_time <- (proc.time() - initial_design_start_time)[["elapsed"]]
 
         if(!(is.null(df_design))){
             rm(df_design)
@@ -251,6 +259,8 @@ for(i in 1:iterations){
                         sep = ""),
                   row.names = FALSE)
 
+        initial_design_measure_start_time <- proc.time()
+
         cmd <- paste("CUDA_VISIBLE_DEVICES=",
                      cuda_device,
                      " python3 -W ignore rl_quantize.py --arch ",
@@ -269,6 +279,9 @@ for(i in 1:iterations){
                      " --optimizer RS --val_size 10000",
                      " --train_size 20000",
                      sep = "")
+
+        initial_design_measure_time <- (proc.time() -
+                                        initial_design_measure_start_time)[["elapsed"]]
 
         print(cmd)
         system(cmd)
@@ -328,6 +341,8 @@ for(i in 1:iterations){
 
         y <- performance(search_space$SizeRatio, search_space$Top1, search_space$Top5)
 
+        model_fit_start_time <- proc.time()
+
         gpr_model <- km(formula = ~ .,
                         design = select(search_space, -Top5, -Top1, -Size, -SizeRatio),
                         response = y,
@@ -335,12 +350,21 @@ for(i in 1:iterations){
                         control = list(pop.size = 400,
                                        BFGSburnin = 500))
 
+        model_fit_time <- (proc.time() -
+                           model_fit_start_time)[["elapsed"]]
+
         print("Generating Sample")
 
         if(is.null(gpr_sample)){
+
+            ei_design_start_time <- proc.time()
+
             new_sample <- generate_filtered_sample(gpr_sample_size,
                                                    sobol_partial,
                                                    size_limits)
+
+            ei_design_time <- (proc.time() -
+                               ei_design_start_time)[["elapsed"]]
 
             gpr_sample <- new_sample %>%
                 distinct()
@@ -354,11 +378,17 @@ for(i in 1:iterations){
         print("Computing EI")
         print(nrow(gpr_sample))
 
+        ei_compute_start_time <- proc.time()
+
         # Using the EI function from DiceOptim:
         gpr_sample$expected_improvement <- future_apply(gpr_sample,
                                                         1,
                                                         EI,
                                                         gpr_model)
+
+        ei_compute_time <- (proc.time() -
+                            ei_compute_start_time)[["elapsed"]]
+
         gpr_selected_points <- gpr_sample %>%
             arrange(desc(expected_improvement))
 
@@ -374,7 +404,7 @@ for(i in 1:iterations){
         # gpr_selected_points <- select(gpr_selected_points[1:gpr_added_points, ],
         #                               -expected_improvement)
 
-        gpr_selected_points <- select(gpr_selected_points[1:gpr_total_selected_points, ],
+        gpr_selected_points <- select(gpr_selected_points[1:gpr_added_points, ],
                                       -expected_improvement)
 
         print("Generating perturbation sample")
@@ -391,16 +421,18 @@ for(i in 1:iterations){
             slice(1:(gpr_added_points *
                      gpr_neighbourhood_factor))
 
+        neighbour_ei_design_start_time <- proc.time()
+
         perturbation <- perturb_filtered_sample(perturbation,
                                                 length(perturbation[, 1]),
                                                 length(perturbation[, 1]),
                                                 perturbation_range,
                                                 size_limits)
 
-        gpr_selected_neighbourhood <- perturbation
+        neighbour_ei_design_time <- (proc.time() -
+                                     neighbour_ei_design_start_time)[["elapsed"]]
 
-        gpr_sample <- bind_rows(gpr_sample, gpr_selected_neighbourhood) %>%
-            distinct()
+        gpr_selected_neighbourhood <- perturbation
 
         gpr_selected_points <- bind_rows(gpr_selected_points,
                                          gpr_selected_neighbourhood)
@@ -411,11 +443,17 @@ for(i in 1:iterations){
         print("Computing perturbed EI")
         print(nrow(gpr_selected_points))
 
+        neighbour_ei_compute_start_time <- proc.time()
+
         # Using EI from DiceOptim:
         gpr_selected_points$expected_improvement <- future_apply(gpr_selected_points,
                                                                  1,
                                                                  EI,
                                                                  gpr_model)
+
+        neighbour_ei_compute_time <- (proc.time() -
+                                      neighbour_ei_compute_start_time)[["elapsed"]]
+
         gpr_selected_points <- gpr_selected_points %>%
             arrange(desc(expected_improvement))
 
@@ -433,6 +471,12 @@ for(i in 1:iterations){
         gpr_selected_points <- select(gpr_selected_points[1:gpr_total_selected_points, ],
                                       -expected_improvement)
 
+        gpr_sample <- bind_rows(gpr_sample,
+                                select(gpr_selected_points[1:(gpr_added_points +
+                                                              gpr_added_neighbours), ],
+                                       -expected_improvement)) %>%
+            distinct()
+
         df_design <- data.frame(gpr_selected_points)
 
         write.csv(df_design,
@@ -441,6 +485,8 @@ for(i in 1:iterations){
                         ".csv",
                         sep = ""),
                   row.names = FALSE)
+
+        neighbour_design_measure_start_time <- proc.time()
 
         cmd <- paste("CUDA_VISIBLE_DEVICES=",
                      cuda_device,
@@ -461,6 +507,9 @@ for(i in 1:iterations){
                      " --optimizer RS --val_size 10000",
                      " --train_size 20000",
                      sep = "")
+
+        neighbour_design_measure_time <- (proc.time() -
+                                          neighbour_design_measure_start_time)[["elapsed"]]
 
         print(cmd)
         system(cmd)
@@ -485,6 +534,29 @@ for(i in 1:iterations){
             search_space <- bind_rows(search_space, current_results) %>%
                 distinct()
         }
+
+        new_timing_info <- data.frame(initial_design = initial_design_time,
+                                      initial_design_measure = initial_design_measure_time,
+                                      model_fit = model_fit_time,
+                                      ei_design = ei_design_time,
+                                      ei_compute = ei_compute_time,
+                                      neighbour_ei_design = neighbour_ei_design_time,
+                                      neighbour_ei_compute = neighbour_ei_compute_time,
+                                      neighbour_design_measure = neighbour_design_measure_time)
+
+        if(is.null(timing_info)){
+            timing_info <- new_timing_info
+        } else{
+            timing_info <- bind_rows(timing_info,
+                                     new_timing_info)
+        }
+
+        write.csv(timing_info,
+                  paste("timing_info_",
+                        run_id,
+                        ".csv",
+                        sep = ""),
+                  row.names = FALSE)
 
         write.csv(search_space,
                   paste("gpr_",
