@@ -37,6 +37,9 @@ gpr_added_points <- 3
 gpr_added_neighbours <- 3
 gpr_neighbourhood_factor <- 500
 
+EI_backlog <- NULL
+EI_backlog_size <- 200
+
 gpr_total_selected_points <- 1
 gpr_iterations <- 245 - starting_sobol_n
 
@@ -346,8 +349,6 @@ for(i in 1:iterations){
 
         print("Search space:")
         print(str(search_space))
-        # print("Coded weight df:")
-        # print(str(coded_size_df))
 
         if(!(is.null(gpr_model))){
             rm(gpr_model)
@@ -371,25 +372,27 @@ for(i in 1:iterations){
 
         print("Generating Sample")
 
-        if(is.null(gpr_sample)){
+        ei_design_start_time <- proc.time()
 
-            ei_design_start_time <- proc.time()
+        new_sample <- generate_filtered_sample(gpr_sample_size,
+                                               sobol_partial,
+                                               size_limits)
 
-            new_sample <- generate_filtered_sample(gpr_sample_size,
-                                                   sobol_partial,
-                                                   size_limits)
+        ei_design_time <- (proc.time() -
+                           ei_design_start_time)[["elapsed"]]
 
-            ei_design_time <- (proc.time() -
-                               ei_design_start_time)[["elapsed"]]
+        gpr_sample <- new_sample %>%
+            distinct()
 
-            gpr_sample <- new_sample %>%
+        if(!is.null(EI_backlog)){
+            gpr_sample <- bind_rows(gpr_sample,
+                                    EI_backlog) %>%
                 distinct()
-
-            rm(new_sample)
-            quiet(gc())
-            new_sample <- NULL
-
         }
+
+        rm(new_sample)
+        quiet(gc())
+        new_sample <- NULL
 
         print("Computing EI")
         print(nrow(gpr_sample))
@@ -483,11 +486,8 @@ for(i in 1:iterations){
         #                                                      gpr_added_neighbours), ],
         #                               -expected_improvement)
 
-        gpr_sample <- bind_rows(gpr_sample,
-                                select(gpr_selected_points[1:(gpr_added_points +
-                                                              gpr_added_neighbours), ],
-                                       -expected_improvement)) %>%
-            distinct()
+        EI_backlog <- select(gpr_selected_points[1:EI_backlog_size, ],
+                             -expected_improvement)
 
         gpr_selected_points <- select(gpr_selected_points[1:gpr_total_selected_points, ],
                                       -expected_improvement)
