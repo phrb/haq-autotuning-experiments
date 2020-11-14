@@ -99,8 +99,8 @@ for(i in 1:repetitions){
                                function (x) { run_measurement(df[x, ], cuda_device) }))
 
     new_measurements = df
-    new_measurements$Top1_repeats = current_results$Top1
-    new_measurements$Top5_repeats = current_results$Top5
+    new_measurements$Top1_repeats = results$Top1
+    new_measurements$Top5_repeats = results$Top5
 
     if(is.null(measurements)){
         measurements = new_measurements
