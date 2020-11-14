@@ -92,7 +92,7 @@ repetitions = 10
 target_path = "results/resnet50_tests/gpr_restricted_top15_1experiment/"
 cuda_device = as.integer(args[1])
 
-df = load_best_points()
+df = load_best_points(target_path)
 measurements = NULL
 
 for(i in 1:repetitions){
