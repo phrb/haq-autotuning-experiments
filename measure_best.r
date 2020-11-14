@@ -95,8 +95,8 @@ df = load_best_points(target_path)
 measurements = NULL
 
 for(i in 1:repetitions){
-    results = sapply(1:nrow(df),
-                     function (x) { run_measurement(df[x, ], cuda_device) })
+    results = bind_rows(lapply(1:nrow(df),
+                               function (x) { run_measurement(df[x, ], cuda_device) }))
 
     new_measurements = df
     new_measurements$Top1_repeats = current_results$Top1
