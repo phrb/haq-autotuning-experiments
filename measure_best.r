@@ -98,6 +98,8 @@ for(i in 1:repetitions){
     results = bind_rows(lapply(1:nrow(df),
                                function (x) { run_measurement(df[x, ], cuda_device) }))
 
+    print(results)
+
     new_measurements = df
     new_measurements$Top1_repeats = results$Top1
     new_measurements$Top5_repeats = results$Top5
