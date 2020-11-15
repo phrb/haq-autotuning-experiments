@@ -84,12 +84,19 @@ run_measurement <- function(measurement, cuda_device){
                  ".csv",
                  sep = ""))
 
+    system(paste("rm haq_results_log_",
+                 run_id,
+                 ".csv",
+                 sep = ""))
+
     return(current_results)
 }
 
 repetitions = 10
-target_path = "results/resnet50_tests/gpr_restricted_top15_1experiment/"
 cuda_device = as.integer(args[1])
+
+# "results/resnet50_tests/gpr_restricted_top15_1experiment/"
+target_path = args[2]
 
 df = load_best_points(target_path)
 measurements = NULL
