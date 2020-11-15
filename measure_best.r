@@ -16,11 +16,19 @@ read_data <- function(new_path, pattern = "search_space.csv"){
     return(bind_rows(lapply(target, read_search_space_csv)))
 }
 
-load_best_points <- function(target_path){
-    return(df = read_data(target_path) %>%
+load_best_points <- function(target_path, pattern = "search_space.csv"){
+    return(df = read_data(target_path, pattern) %>%
                group_by(experiment_id) %>%
                filter(n() >= 245 & Top5 == max(Top5)) %>%
                ungroup())
+}
+
+load_encoded_best_points <- function(target_path){
+    k = seq(from = 0.1, to = 0.9, length.out = 8)
+    return(df = load_best_points(target_path, pattern = ".csv")  %>%
+               mutate(Layer = gsub("W", "X", Layer)) %>%
+               mutate(across(starts_with("X"), ~ k[.x])))
+
 }
 
 run_measurement <- function(measurement, cuda_device){
@@ -99,7 +107,14 @@ cuda_device = as.integer(args[1])
 target_path = args[2]
 print("Loading from path:", target_path)
 
-df = load_best_points(target_path)
+is_encoded = as.integer(args[3])
+
+if(is_encoded < 0){
+    df = load_best_points(target_path)
+} else{
+    df = load_encoded_best_points(target_path)
+}
+
 measurements = NULL
 
 for(i in 1:repetitions){
