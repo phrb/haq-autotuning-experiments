@@ -97,6 +97,7 @@ cuda_device = as.integer(args[1])
 
 # "results/resnet50_tests/gpr_restricted_top15_1experiment/"
 target_path = args[2]
+print("Loading from path:", target_path)
 
 df = load_best_points(target_path)
 measurements = NULL
