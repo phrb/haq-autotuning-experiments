@@ -105,7 +105,7 @@ cuda_device = as.integer(args[1])
 
 # "results/resnet50_tests/gpr_restricted_top15_1experiment/"
 target_path = args[2]
-print("Loading from path:", target_path)
+print(paste("Loading from path:", target_path))
 
 is_encoded = as.integer(args[3])
 
