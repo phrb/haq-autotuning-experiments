@@ -25,10 +25,16 @@ load_best_points <- function(target_path, pattern = "search_space.csv"){
 
 load_encoded_best_points <- function(target_path){
     k = seq(from = 0.1, to = 0.9, length.out = 8)
-    return(df = load_best_points(target_path, pattern = ".csv")  %>%
-               rename_all(~ gsub("W", "X", .x)) %>%
-               mutate_at(vars(starts_with("X")), ~ k[.x]))
 
+    df = read_data(target_path, pattern = ".csv") %>%
+        group_by(experiment_id) %>%
+        filter(n() >= 244 & Top5 == max(Top5)) %>%
+        ungroup() %>%
+        rename_all(~ gsub("W", "X", .x)) %>%
+        mutate_at(vars(starts_with("X")), ~ k[.x])
+    print(df)
+
+    return(df)
 }
 
 run_measurement <- function(measurement, cuda_device){
