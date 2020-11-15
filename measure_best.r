@@ -26,7 +26,7 @@ load_best_points <- function(target_path, pattern = "search_space.csv"){
 load_encoded_best_points <- function(target_path){
     k = seq(from = 0.1, to = 0.9, length.out = 8)
     return(df = load_best_points(target_path, pattern = ".csv")  %>%
-               mutate(Layer = gsub("W", "X", Layer)) %>%
+               rename_with(~ gsub("W", "X", .x)) %>%
                mutate(across(starts_with("X"), ~ k[.x])))
 
 }
