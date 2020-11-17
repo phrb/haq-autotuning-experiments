@@ -37,7 +37,7 @@ for(i in 1:iterations){
                  " --train_episode ",
                  total_measurements,
                  " --finetune_flag",
-                 " --use_top1",
+                 " --use_top5",
                  " --run_id ",
                  run_id,
                  " --data_bsize ",
