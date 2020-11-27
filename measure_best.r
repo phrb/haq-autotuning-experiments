@@ -23,6 +23,10 @@ load_best_points <- function(target_path, pattern = "search_space.csv"){
                ungroup())
 }
 
+load_baseline_points <- function(target_path, pattern = ".csv"){
+    return(df = read_data(target_path, pattern))
+}
+
 load_encoded_best_points <- function(target_path){
     k = seq(from = 0.1, to = 0.9, length.out = 8)
 
@@ -130,8 +134,10 @@ is_encoded = as.integer(args[3])
 
 if(is_encoded < 0){
     df = load_best_points(target_path)
-} else{
+} else if(is_encoded > 0){
     df = load_encoded_best_points(target_path)
+} else{
+    df = load_baseline_points(target_path)
 }
 
 measurements = NULL
