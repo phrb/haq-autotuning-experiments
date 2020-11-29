@@ -585,9 +585,9 @@ for(i in 1:iterations){
                         sep = ""),
                   row.names = FALSE)
 
-        if(length(search_space[, 1]) >= total_measurements){
-            break
-        }
+        # if(length(search_space[, 1]) >= total_measurements){
+        #     break
+        # }
     }
 
     elapsed_time <- as.integer(format(Sys.time(), "%s")) - start_time
